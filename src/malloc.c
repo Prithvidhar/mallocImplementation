@@ -46,7 +46,7 @@ void printStatistics( void )
 
 struct _block 
 {
-   size_t  size;         /* Size of the allocated _block of memory in bytes */
+   int  size;         /* Size of the allocated _block of memory in bytes */
    struct _block *prev;  /* Pointer to the previous _block of allcated memory   */
    struct _block *next;  /* Pointer to the next _block of allcated memory   */
    bool   free;          /* Is this _block free?                     */
@@ -55,6 +55,8 @@ struct _block
 
 
 struct _block *heapList = NULL; /* Free list to track the _blocks available */
+struct _block *nexty = NULL;; 
+int first = 0;
 
 /*
  * \brief findFreeBlock
@@ -83,14 +85,63 @@ struct _block *findFreeBlock(struct _block **last, size_t size)
 
 #if defined BEST && BEST == 0
    /** \TODO Implement best fit here */
+   struct _block *smallest=NULL;
+   int small = 1000000000;
+  // printf("Best\n");
+    while (curr) // && !(curr->free && curr->size >= size)) 
+   {
+      *last = curr;
+      if(curr->free && curr->size >= size && curr->size <= small)
+      {
+         small = curr->size;
+         smallest = curr;
+      }
+      
+      curr  = curr->next;
+      
+   }
+   curr = smallest;
+   
+   
 #endif
 
 #if defined WORST && WORST == 0
    /** \TODO Implement worst fit here */
+   struct _block *smallest=NULL;
+   int small = 0;
+  // printf("Best\n");
+    while (curr) // && !(curr->free && curr->size >= size)) 
+   {
+      *last = curr;
+      if(curr->free && curr->size >= size && curr->size >= small)
+      {
+         small = curr->size;
+         smallest = curr;
+      }
+      
+      curr  = curr->next;
+      
+   }
+   curr = smallest;
 #endif
 
 #if defined NEXT && NEXT == 0
    /** \TODO Implement next fit here */
+   if(first>0)
+   {
+      curr = nexty;
+   }
+   else
+   {
+//printf("Testing next Fit\n");
+   }
+   first++;
+   while(curr && !(curr->free && curr->size >= size))
+   {
+      *last = curr;
+      curr = curr->next;
+   }
+   nexty = curr;
 #endif
 
    return curr;
@@ -110,6 +161,7 @@ struct _block *findFreeBlock(struct _block **last, size_t size)
  */
 struct _block *growHeap(struct _block *last, size_t size) 
 {
+   num_grows++;
    /* Request more space from OS */
    struct _block *curr = (struct _block *)sbrk(0);
    struct _block *prev = (struct _block *)sbrk(sizeof(struct _block) + size);
@@ -155,6 +207,8 @@ struct _block *growHeap(struct _block *last, size_t size)
  */
 void *malloc(size_t size) 
 {
+   num_mallocs++;
+   
 
    if( atexit_registered == 0 )
    {
@@ -178,10 +232,32 @@ void *malloc(size_t size)
    /* TODO: Split free _block if possible */
 
    /* Could not find free _block, so grow heap */
+   
    if (next == NULL) 
    {
       next = growHeap(last, size);
    }
+   
+   
+   else if(next->size >size)
+   {
+     // printf("Point reached!!\n");
+      num_splits++;
+      //printf("Test2\n");
+      struct _block* store = next->next;
+      size_t storeSize = next->size;
+      next->size = size;
+      //printf("Test\n");
+      next->next = (struct _block*)((char*)next-(char*)(storeSize-size));
+      next->next->size = (struct _block*)((char*)(storeSize-size));
+      next->next->free = true;
+      next->next->next = store;
+      //next->next->prev = next;
+      
+      
+   }
+   
+   
 
    /* Could not find free _block or grow heap, so just return NULL */
    if (next == NULL) 
@@ -191,6 +267,8 @@ void *malloc(size_t size)
    
    /* Mark _block as in use */
    next->free = false;
+  // printf("next is %p\n", next);
+   //printf("next->next %p\n", next->next);
 
    /* Return data address associated with _block */
    return BLOCK_DATA(next);
@@ -208,17 +286,64 @@ void *malloc(size_t size)
  */
 void free(void *ptr) 
 {
+   num_frees++;
    if (ptr == NULL) 
    {
       return;
    }
-
+   
    /* Make _block as free */
    struct _block *curr = BLOCK_HEADER(ptr);
    assert(curr->free == 0);
    curr->free = true;
 
    /* TODO: Coalesce free _blocks if needed */
+   
+   
+   struct _block *temp = heapList->next;
+   
+   
+   while(temp!= NULL &&temp->next != NULL)
+   {
+     // printf("Size= %d and next free = %d\n", temp->size, temp->next->free);
+    // printf("temp = %p, next = %p\n", temp, temp->next);
+     //printf("curr = %p\n",curr); 
+     printf("Before null\n");
+      if(temp->next == NULL)
+      {
+         printf("Next is NULL\n");
+      }
+      else
+      {
+         printf("Before free check\n");
+         if((temp->next)->free == true && temp->free == true)
+         {
+         
+            printf("After free check\n");
+            num_coalesces++;
+            printf("Before Calculating\n");
+            temp->size += (temp->next->size )+ sizeof(struct _block);
+            temp->next = temp->next->next;
+            printf("After Calculating\n");
+           
+         // printf("Passes numc\n");
+         
+         }
+      }
+      
+      
+         // printf("T90\n");
+     
+      
+      printf("Before Value\n");
+      temp = temp->next;
+       printf("VALUE\n");
+     // printf("TS\n");
+   }
+   
+   
+    
+   
 }
 /* 7f704d5f-9811-4b91-a918-57c1bb646b70       --------------------------------*/
 /* vim: set expandtab sts=3 sw=3 ts=6 ft=cpp: --------------------------------*/
