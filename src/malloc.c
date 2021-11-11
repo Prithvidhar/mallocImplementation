@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define ALIGN4(s)         (((((s) - 1) >> 2) << 2) + 4)
 #define BLOCK_DATA(b)      ((b) + 1)
@@ -127,21 +128,33 @@ struct _block *findFreeBlock(struct _block **last, size_t size)
 
 #if defined NEXT && NEXT == 0
    /** \TODO Implement next fit here */
-   if(first>0)
+   if(nexty==NULL) nexty = heapList;
+
+   while(nexty && !(nexty->free && nexty->size >= size))
    {
-      curr = nexty;
+      *last = nexty;
+      nexty = nexty->next;
    }
-   else
+
+   
+   if(nexty==NULL)
    {
-//printf("Testing next Fit\n");
+      curr = heapList;
+     while(curr !=nexty)
+     {
+        if(curr->free && curr->size >= size)
+        {
+           printf("Poot\n");
+           
+           return curr;
+        }
+        curr = curr->next;
+     }
+     return NULL; 
    }
-   first++;
-   while(curr && !(curr->free && curr->size >= size))
-   {
-      *last = curr;
-      curr = curr->next;
-   }
-   nexty = curr;
+   return nexty;
+   
+   
 #endif
 
    return curr;
@@ -325,6 +338,7 @@ void free(void *ptr)
             temp->size += (temp->next->size )+ sizeof(struct _block);
             temp->next = temp->next->next;
             printf("After Calculating\n");
+            continue;
            
          // printf("Passes numc\n");
          
@@ -336,6 +350,7 @@ void free(void *ptr)
      
       
       printf("Before Value\n");
+      
       temp = temp->next;
        printf("VALUE\n");
      // printf("TS\n");
@@ -344,6 +359,19 @@ void free(void *ptr)
    
     
    
+}
+void* calloc(size_t size, size_t count)
+{
+   void* ptr = malloc(size*count);
+   memset(ptr, 0 , size*count);
+   return ptr;
+}
+
+void* realloc(void* ptr, size_t size)
+{
+   void* ptr2 = malloc(size);
+   memcpy(ptr2, ptr, size);
+   return ptr2;
 }
 /* 7f704d5f-9811-4b91-a918-57c1bb646b70       --------------------------------*/
 /* vim: set expandtab sts=3 sw=3 ts=6 ft=cpp: --------------------------------*/
